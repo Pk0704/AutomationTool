@@ -21,3 +21,20 @@ The AutomationTool is an advanced content generation platform that leverages Nat
    ```bash
    git clone https://github.com/yourgithub/AutomationTool.git
    cd AutomationTool
+2. **Installation dependencies**
+pip install -r requirements.txt
+
+3. **set up environment variables**
+4. export OPENAI_API_KEY='YouUnique&privateAPI'
+
+**Contributions** 
+Anyone wishing to contribute to this model is more than welcome to do so - I would be very grateful for it! Please fork the repository and submit a pull request.
+
+
+
+
+
+
+
+
+

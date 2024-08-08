@@ -1,0 +1,156 @@
+import os
+import csv
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from openai import OpenAI
+from sklearn.feature_extraction.text import TfidfVectorizer
+import numpy as np
+
+class QNetwork(nn.Module):
+    def __init__(self, input_size, output_size):
+        super(QNetwork, self).__init__()
+        self.fc1 = nn.Linear(input_size, 128)
+        self.fc2 = nn.Linear(128, 64)
+        self.fc3 = nn.Linear(64, output_size)
+    
+    def forward(self, x):
+        x = torch.relu(self.fc1(x))
+        x = torch.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
+
+# Function to generate creative content using OpenAI's model
+def generate_creative_content(client, prompt, model="gpt-4"):
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        if response.choices and len(response.choices) > 0 and response.choices[0].message.content:
+            generated_content = response.choices[0].message.content.strip()
+            print("Generated Content:", generated_content)  # Log the generated content
+            return generated_content
+        else:
+            print("No content was generated. Response:", response)
+            return None
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None  # Return None if content generation fails or an exception is raised
+
+# Function to get user feedback
+def get_user_feedback(content):
+    print("Please rate the content from 1 (poor) to 5 (excellent):")
+    rating = input("Rating: ")
+    return int(rating)
+
+# Function to extract features using TF-IDF
+def extract_features(vectorizer, data):
+    return vectorizer.fit_transform(data)
+
+# Function to save feedback to a CSV file
+def save_feedback_to_csv(prompts, contents, ratings, filename='feedback.csv'):
+    with open(filename, mode='a', newline='') as file:
+        writer = csv.writer(file)
+        for prompt, content, rating in zip(prompts, contents, ratings):
+            writer.writerow([prompt, content, rating])
+
+# Function to calculate average rating from the feedback file
+def calculate_average_rating(filename='feedback.csv'):
+    ratings = []
+    with open(filename, mode='r') as file:
+        reader = csv.reader(file)
+        for row in reader:
+            try:
+                rating = int(row[2])
+                ratings.append(rating)
+            except ValueError:
+                continue
+    return sum(ratings) / len(ratings) if ratings else 0
+
+# Function to interactively get user preferences
+def get_user_preferences():
+    while True:
+        print("What type of content would you like? (S) Story, (A) Article, (J) Journal, (P) Poem, (O) Other:")
+        content_type = input().strip().upper()
+        if content_type in ['S', 'A', 'P', 'J', 'O']:
+            break
+        else:
+            print("Invalid input. Please enter S, J, A, P, or O.")
+
+    if content_type in ['S', 'P']:
+        style = input("What style would you like it in? You can say anything from Shakespeare to Old American folk! ").strip()
+    elif content_type in ['A', 'J', 'O']:
+        style = input("What would you like to know more about? ").strip()
+    return content_type, style
+
+# Function to create a prompt based on user preferences
+def create_prompt(content_type, style):
+    if content_type == 'S':
+        return f"Write a story in the style of {style}."
+    elif content_type == 'A':
+        return f"Write an article about {style}."
+    elif content_type == 'P':
+        return f"Write a poem in the style of {style}."
+    elif content_type == 'O':
+        return f"Write a piece of literature about {style}."
+    elif content_type == 'J':
+        return f"Write a journal about {style}."
+    else:
+        return ""
+
+def main():
+    api_key = os.getenv('OPENAI_API_KEY', 'Your own private API')
+    client = OpenAI(api_key=api_key)
+
+    contents = []
+    prompts = []
+    ratings = []
+
+    vectorizer = TfidfVectorizer()
+
+    while True:
+        content_type, style = get_user_preferences()
+        prompt = create_prompt(content_type, style)
+        generated_content = generate_creative_content(client, prompt)
+        
+        if generated_content:
+            contents.append(generated_content)
+            prompts.append(prompt)
+            rating = get_user_feedback(generated_content)
+            ratings.append(rating)
+            
+            # Extract features
+            X = extract_features(vectorizer, [generated_content]).toarray()
+            input_size = X.shape[1]  # Update input size dynamically
+            output_size = 5  # Rating from 1 to 5
+
+            # Initialize Q-Network with the correct input size
+            q_network = QNetwork(input_size, output_size)
+            optimizer = optim.Adam(q_network.parameters(), lr=0.001)
+            criterion = nn.MSELoss()
+
+            X = torch.tensor(X, dtype=torch.float32)
+            target = torch.zeros(output_size)
+            target[rating - 1] = 1  # One-hot encoding for the rating
+            output = q_network(X)
+            loss = criterion(output, target)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+        else:
+            print("Failed to generate content.")
+        
+        another = input("Would you like to generate another piece of content? (yes/no): ").strip().lower()
+        if another != 'yes':
+            break
+
+    # Save feedback to CSV
+    save_feedback_to_csv(prompts, contents, ratings)
+
+    # Calculate and display average rating
+    average_rating = calculate_average_rating()
+    print(f"Current average user satisfaction rating: {average_rating:.2f}")
+
+if __name__ == "__main__":
+    main()

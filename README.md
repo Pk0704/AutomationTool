@@ -19,7 +19,7 @@ The AutomationTool is an advanced content generation platform that leverages Nat
 ## Setup and Installation
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/yourgithub/AutomationTool.git
+   git clone https://https://github.com/Pk0704/AutomationTool.git
    cd AutomationTool
 2. **Installation dependencies**
 pip install -r requirements.txt

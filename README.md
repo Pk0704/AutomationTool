@@ -22,7 +22,7 @@ The AutomationTool is an advanced content generation platform that leverages Nat
    git clone https://https://github.com/Pk0704/AutomationTool.git
    cd AutomationTool
 2. **Installation dependencies**
-pip install -r requirements.txt
+pip install -r requirements.txt (OpenAi, PyTorch, Numpy, etc)
 
 3. **set up environment variables**
 4. export OPENAI_API_KEY='YouUnique&privateAPI'

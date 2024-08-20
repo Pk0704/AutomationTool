@@ -98,9 +98,23 @@ def create_prompt(content_type, style):
         return f"Write a journal about {style}."
     else:
         return ""
+    
+def get_reward(rating):
+    # Define a reward structure based on the rating
+    if rating == 5:
+        return 2  # Highest reward for the best rating
+    elif rating == 4:
+        return 1  # Moderate reward for a good rating
+    elif rating == 3:
+        return 0  # Neutral reward for an average rating
+    elif rating == 2:
+        return -1  # Negative reward for a below-average rating
+    else:
+        return -2  # Most negative reward for the worst rating
+
 
 def main():
-    api_key = os.getenv('OPENAI_API_KEY', 'Your own private API')
+    api_key = os.getenv('OPENAI_API_KEY', 'YourOwnPrivateApi')
     client = OpenAI(api_key=api_key)
 
     contents = []
@@ -113,6 +127,8 @@ def main():
         content_type, style = get_user_preferences()
         prompt = create_prompt(content_type, style)
         generated_content = generate_creative_content(client, prompt)
+
+        
         
         if generated_content:
             contents.append(generated_content)
@@ -132,7 +148,8 @@ def main():
 
             X = torch.tensor(X, dtype=torch.float32)
             target = torch.zeros(output_size)
-            target[rating - 1] = 1  # One-hot encoding for the rating
+            reward = get_reward(rating)
+            target[rating - 1] = reward  # One-hot encoding for the rating
             output = q_network(X)
             loss = criterion(output, target)
             optimizer.zero_grad()
